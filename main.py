@@ -2,7 +2,9 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import time
 import pandas as pd
-#Удаление ударения
+
+
+# удаление ударения
 def stress_del(word):
     if word.count('а́') > 0:
         word = word.replace('а́','а')
@@ -24,12 +26,14 @@ def stress_del(word):
         word = word.replace('я́','я')
     return word
 
-#ожидание появления элемента на странице
+
+# ожидание появления элемента на странице
 def waiting(seconds, element_id):
     driver.implicitly_wait(seconds)  # seconds
     myDynamicElement = driver.find_elements_by_id(element_id)
 
-#Печатает тест из оуна три раза
+    
+# печатает тест из оуна три раза
 def printing_x_3():
     elem = driver.find_element_by_id('prno')
     right_version = driver.find_element_by_id('trainer_rno_right').text
@@ -42,11 +46,12 @@ def printing_x_3():
     elem = driver.find_element_by_id('prno')
     elem.send_keys(right_version)
 
-#Открываем файл с конфигом
+
+# открываем файл с конфигом
 config = open('config.txt', 'r')
-#Тут будет пароль
-passandlogin = []
-#Отделяет логин от пароля
+passandlogin = []  # тут будет пароль
+
+# отделяет логин от пароля
 for line in config:
     passandlogin.append(line)
     print(line)
@@ -65,7 +70,7 @@ mistake_counter = 0
 
 driver = webdriver.Firefox("C:/Users/Jevud/PycharmProjects/")
 
-#авторизация на сайте веб грамотей и заход в тест, на вход логин и пароль
+# авторизация на сайте веб грамотей и заход в тест, на вход логин и пароль
 driver.get('https://gramotei.cerm.ru/')
 elem = driver.find_element_by_name('simora_login')
 elem.send_keys(login)
@@ -76,6 +81,7 @@ time.sleep(20)
 elem = driver.find_elements_by_class_name('exercise__playBtn')
 elem[-1].click()
 time.sleep(5)
+
 while True:
     answer_from_base = False
     variant3 = ' '
@@ -83,30 +89,32 @@ while True:
     variant1 = ' '
     trueletter = None
     index_word_in_base = None
+    
     # если есть кнопка продолжения то кликает на неё
     waiting(5, 'trainer_question')
     if len(driver.find_elements_by_class_name('button btn_yellow')) > 0:
         print('Кнопка продолжения задекчена')
         elem = driver.find_element_by_class_name('button btn_yellow')
         elem.click()
+        
     # выполняется в случае если нет ошибки на данный момент (если не надо писать текст)
     if len(driver.find_elements_by_id('trainer_rno_note')) == 0:
-        #Берём вопрос
+        # берём вопрос и смотрим варианты ответа
         elem = driver.find_element_by_id('trainer_question')
         question1 = stress_del(elem.text)
-        # Cмотрит варианты ответа
         elem = driver.find_elements_by_class_name('trainer_variant')
         variant1 = elem[0].text
         variant2 = elem[1].text
-        #если вариантов больше 3 то берёт во внимание третий
+        
+        # если вариантов больше 3 то берёт во внимание третий
         if len(driver.find_elements_by_class_name('trainer_variant')) == 3:
             variant3 = elem[2].text
-        #ищет индекс вопроса в базе
-        index_word_in_base = (df.index[df.question == question1])
-        #и если находит, то присваивает trueletter ответ
-        if index_word_in_base.size > 0:
+            
+        index_word_in_base = (df.index[df.question == question1])  # ищет индекс вопроса в базе
+        if index_word_in_base.size > 0:  # если находит, то присваивает trueletter ответ
             trueletter = (df['answer'].loc[index_word_in_base]).values[-1]
-            #Срвнивает с ответом
+        
+            # сравнивает с ответом
             if trueletter == variant3:
                 elem = driver.find_elements_by_class_name('trainer_variant')
                 elem[2].click()
@@ -122,38 +130,33 @@ while True:
                 elem.click()
                 answer_from_base_counter += 1
                 answer_from_base = True
-        #Кликает на случайный если не находит ответа в базе
-        else:
+        else:  # кликает на случайный если не находит ответа в базе
             elem = driver.find_element_by_class_name('trainer_variant')
             elem.click()
 
-    # Ждёт ошибки 10 секунд, если не появляется идёт дальше
-    waiting(5, 'trainer_rno_note')
+    waiting(5, 'trainer_rno_note')  # ждёт ошибки 10 секунд
 
     # если есть ошибка и надо вводить текст
     if len(driver.find_elements_by_id('trainer_rno_note')) > 0:
-        #пишет текст 3 раза
         printing_x_3()
-        #Передаёт другую переменную как правильный вариант
         truevariant1 = variant2
         mistake_counter += 1
-        #Удаляет строку из базы если ответ был не правильный
-        if answer_from_base == True:
+        if answer_from_base == True:  # удаляет строку из базы если ответ был не правильный
             df = df.drop(df[df.question == question1].index)
     else:
         truevariant1 = variant1
 
 
-    #Обновление таблицы (только если ответ не был взят из базы)
+    # обновление таблицы (только если ответ не был взят из базы)
     cycle_counter += 1
     if answer_from_base == False:
         df1 = pd.DataFrame({
             'question': [str(question1)],
-            'answer': [str(truevariant1)],
-        })
+            'answer': [str(truevariant1)] })
         df = df.append(df1)
         df.to_csv('russian_language_base.csv')
-    # Печать логов
+    
+    # печать логов
     print(' ')
     print(' ')
     print('Слово: ' + question1)
